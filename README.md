@@ -3,7 +3,7 @@
 The repository contains scripts for the automated loading, monitoring, and then processing of CPU-related measurements.
 The CPU Thermal.py script will initiate the monitoring of such data as CPU frequency, power utilization, and temperature.
 After a Warm-up Period the selected CPU load period will begin.
-The script supports Cinebench R20, which is free to use, as well as 3DMark, which requires the Professional Edition.
+The script supports Cinebench R20 and Cinebench R23, which are free to use, as well as 3DMark, which requires the Professional Edition.
 A Cooldown Period follows the CPU load period and goes for the same length of time as the load period, to hopefully ensure the the full cooling behavior is recorded.
 
 With this script, the idea is to have data before a significant CPU load when it is still idle, record data during the load period to see how the CPU warms up, and then watch as the CPU cools off during the Cooldown period.
