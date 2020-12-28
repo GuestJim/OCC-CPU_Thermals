@@ -1,4 +1,5 @@
 #OCC-CPU_Thermals
+
 The repository contains scripts for the automated loading, monitoring, and then processing of CPU-related measurements.
 The CPU Thermal.py script will initiate the monitoring of such data as CPU frequency, power utilization, and temperature.
 After a Warm-up Period the selected CPU load period will begin.
@@ -11,6 +12,7 @@ If you review the script you may notice a reference to similar GPU scripts.
 As these scripts require 3DMark Professional Edition, I am not sharing them as too few will be able to take advantage of them.
 
 ###Software Involved:
+
 - [Python](https://www.python.org/)
 - Python modules:
 	- [psutil](https://pypi.org/project/psutil/)
