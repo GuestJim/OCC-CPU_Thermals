@@ -1,4 +1,4 @@
-#OCC-CPU_Thermals
+# OCC-CPU_Thermals
 
 The repository contains scripts for the automated loading, monitoring, and then processing of CPU-related measurements.
 The CPU Thermal.py script will initiate the monitoring of such data as CPU frequency, power utilization, and temperature.
