@@ -11,7 +11,7 @@ With this script, the idea is to have data before a significant CPU load when it
 If you review the script you may notice a reference to similar GPU scripts.
 As these scripts require 3DMark Professional Edition, I am not sharing them as too few will be able to take advantage of them.
 
-###Software Involved:
+### Software Involved:
 
 - [Python](https://www.python.org/)
 - Python modules:
@@ -32,7 +32,7 @@ For AMD CPUs:
 For Intel CPUs:
 - [Intel Power Gadget](https://software.intel.com/en-us/articles/intel-power-gadget)
 
-###To Use:
+### To Use:
 
 To use these scripts a few things other than setting up the software listed above is necessary.
 Most important is the placement of shortcuts to the appropriate EXE files in the same folder as the script.
