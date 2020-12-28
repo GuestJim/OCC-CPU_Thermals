@@ -22,7 +22,7 @@ As these scripts require 3DMark Professional Edition, I am not sharing them as t
 	- [readr](https://readr.tidyverse.org/)
 	- [ggplot2](https://ggplot2.tidyverse.org/index.html)
 	- [tidyr](https://tidyr.tidyverse.org/)
-- [Cinebench R20](https://www.maxon.net/en-us/support/downloads/)
+- [Cinebench R20/R23](https://www.maxon.net/en-us/support/downloads/)
 - [3DMark Professional Edition]
 
 For AMD CPUs:
