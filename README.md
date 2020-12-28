@@ -49,7 +49,7 @@ The amount of this information will depend on things such as the CPU's thread co
 This information can confuse R if it is not skipped when loading the CSV.
 By having R first read it in as a plain text file and searching for "PROFILE RECORDS" R can now find how many lines to skip.
 So as to not waste time, I have it set to only read in the first 100 lines for this search, which should be enough for most AMD consumer CPUs.
-If it is not you can change it in CPU Thermal - Data - AMD.r.
+If it is not you can change it in **CPU Thermal - Data - AMD.r**.
 
 For those with an Intel CPU, you will need a link to PowerLog3.0 that should also be named "PowerLog3.0".
 Intel Power Gadget does not give nearly as much information as AMD uProf, but it does record CPU temperature, so GPU-z is not neceessary.
@@ -60,4 +60,4 @@ Once these shortcuts are in place and, if necessary, GPU-z writes its sensor log
 
 After the script finishes, the data should be collected in a readily identifiable folder named for the data and time the test started.
 Aside from the possible editing mentioned earlier, the Python script will handle editing the reference R scripts to identify the run and set where the data is held.
-If you intend to process the data on a different machine, you will need to change the **setwd** command in the @CPU Thermal - Input.r script or run the script directly with Rscript.exe.
+If you intend to process the data on a different machine, you will need to change the **setwd** command in the **@CPU Thermal - Input.r** script or run the script directly with Rscript.exe.
