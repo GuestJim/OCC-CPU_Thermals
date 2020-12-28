@@ -31,6 +31,7 @@ For Intel CPUs:
 - [Intel Power Gadget](https://software.intel.com/en-us/articles/intel-power-gadget)
 
 ###To Use:
+
 To use these scripts a few things other than setting up the software listed above is necessary.
 Most important is the placement of shortcuts to the appropriate EXE files in the same folder as the script.
 Rather than require environment variables be set, I have the CPU Thermal.py script configured to use these shortcuts.
