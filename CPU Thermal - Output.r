@@ -432,11 +432,10 @@ HIST.Socket		=	graphHIST(
 sinkTXT()
 sinkHTML()
 
-if	(grepl("Multi-thread", TESTname) | grepl("3DMark", TESTname))	{
+if	(MULTI)	{
 	message("Frequency - Mean")
 	customSave("Frequency - Mean",	plot = graphMEAN())
-}
-if	(grepl("Single thread", TESTname))	{
+}	else	{
 	message("Frequency - Max")
 	customSave("Frequency - Max",	plot = graphMAX())
 }

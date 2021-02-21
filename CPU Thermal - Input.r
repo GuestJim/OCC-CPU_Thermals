@@ -5,6 +5,7 @@ library(ggplot2)
 duration	=	!DUR!
 warm		=	!WARM!
 TESTname	=	"!TEST!"
+MULTI		=	!MULTI!
 CPUname		=	"!CPU!"
 COOLERname	=	"!COOLER!"
 Steady		=	0.3

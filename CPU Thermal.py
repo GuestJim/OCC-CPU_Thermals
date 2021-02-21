@@ -22,6 +22,7 @@ lnkAMDuProf		=	"AMDuProfCLI.lnk"
 lnkGPUz			=	"GPU-z.lnk"
 lnkPowerGadget	=	"PowerLog3.0.lnk"
 lnk3DMark		=	"3DMarkCmd.lnk"
+lnkPrime95		=	"prime95.lnk"
 
 scriptPath	=	sys.argv[0].rsplit("\\", 1)[0] + "\\"
 
@@ -39,15 +40,19 @@ lnkAMDuProf		=	lnkCheck(lnkAMDuProf)
 lnkGPUz			=	lnkCheck(lnkGPUz)
 lnkPowerGadget	=	lnkCheck(lnkPowerGadget)
 lnk3DMark		=	lnkCheck(lnk3DMark)
+lnkPrime95		=	lnkCheck(lnkPrime95)
 
 def INPUT(DEFAULT, TEXT = "Default: !DEF!"):
 	return(input(TEXT.replace("!DEF!", str(DEFAULT))) or DEFAULT)
 #	to make changing the default value easier
 
 def CINEBENCH(LNK, multi, length = None):
+	global MULTI
 	if multi:
+		MULTI	=	"TRUE"
 		cinebenchCpu	=	"g_cinebenchCpuXTest=true"
 	else:
+		MULTI	=	"FALSE"
 		cinebenchCpu	=	"g_cinebenchCpu1Test=true"
 	
 	if length is None:
@@ -58,6 +63,9 @@ def CINEBENCH(LNK, multi, length = None):
 	return(LNK + " " + cinebenchCpu + " " + CinebenchMinimum)
 
 def	_3DMARK(defin):
+	global MULTI
+	MULTI	=	"TRUE"
+	
 	if defin == "0":
 		defin	=	"firestrike_CPU"
 	if defin == "1":
@@ -69,6 +77,11 @@ def	_3DMARK(defin):
 		return(lnk3DMark + " --definition=\"" + scriptPath + "Thermal_Definitions\\" + defin + ".3dmdef\" --loop=0 --audio=off --online=off")
 	else:
 		return(lnk3DMark + " --definition=" + defin + ".3dmdef --loop=0 --audio=off --online=off")
+
+def Prime95():
+	global MULTI
+	MULTI	=	"TRUE"
+	return(lnkPrime95 + " -t")
 
 def	kill(proc_pid):
     process	=	psutil.Process(proc_pid)
@@ -90,7 +103,7 @@ COOLERname	=	INPUT("",		"CPU Cooler Name (default empty): ")
 
 
 # print("Available Tests:")
-print("Available Tests:")
+print("Available Tests (3DMark requires Professional Edition) :")
 optCineR20	=	[
 	"100 \t-\t Cinebench R20 - Multi-thread - Constant",
 	"110 \t-\t Cinebench R20 - Single Thread - Constant",
@@ -112,6 +125,10 @@ opt3DMark	=	[
 	"921 \t-\t 3DMark Time Spy - CPU",
 	""
 	]
+optPrime95	=	[
+	"300 \t-\t Prime95 Torture Test",
+	""
+]
 
 options	=	[]
 
@@ -119,6 +136,8 @@ if	os.path.exists(scriptPath + lnkCINEBENCHR20.replace("\"", "")):
 	options	=	options + optCineR20
 if	os.path.exists(scriptPath + lnkCINEBENCHR23.replace("\"", "")):
 	options	=	options + optCineR23
+if	os.path.exists(scriptPath + lnkPrime95.replace("\"", "")):
+	options	=	options + optPrime95
 if	os.path.exists(scriptPath + lnk3DMark.replace("\"", "")):
 	options	=	options + opt3DMark
 
@@ -137,6 +156,8 @@ def nameTEST(test):
 			out		=	out + " - Constant"
 		if test[2]	==	"1":
 			out		=	out + " - Pulse"
+	if test[0]	==	"3":
+		out	=	"Prime95 Torture Test"
 	
 	if test[0]	==	"9":
 		out	=	"3DMark"
@@ -219,6 +240,10 @@ if	list(test)[0]	==	"1" or list(test)[0]	==	"2":
 			time.sleep(pulse)
 		#	cannot kill the benchmark at the desired time, but this will prevent another iteration
 
+if list(test)[0]	==	"3":
+	Bench		=	subprocess.Popen(Prime95(), shell = True)
+	time.sleep(duration)
+
 if	list(test)[0]	==	"9":
 	Bench		=	subprocess.Popen(_3DMARK(list(test)[1]), shell = True)
 	time.sleep(duration)
@@ -251,6 +276,7 @@ if not os.path.exists(dataPath + "@CPU Thermal - Input.r"):
 				.replace("!DUR!",		str(duration))	\
 				.replace("!WARM!",		str(warm))		\
 				.replace("!PATH!",		dataPath.replace("\\", "/"))	\
+				.replace("!MULTI!",		MULTI)	\
 			)
 		fout.close()
 
