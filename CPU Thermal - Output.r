@@ -1,5 +1,6 @@
-labelBreak	=	function(breaks, SEC = FALSE)	{
+labelBreak	=	function(breaks, SEC = FALSE, r = 2)	{
 	if (!app.BREAK)	return(breaks)
+	if (is.numeric(breaks))	breaks	=	round(breaks, r)
 	BREAK	=	c("", "\n")
 	if	(is.numeric(breaks)	&	0 %in% breaks)	if	((which(breaks %in% 0) %% 2) == 0)	BREAK	=	rev(BREAK)
 	if	(!SEC)	return(	paste0(rep(BREAK, length.out = length(breaks)),	breaks)	)
@@ -13,6 +14,16 @@ round2	=	function(DATA, r = 2)	{
 	numCOL		=	sapply(DATA, is.numeric)
 	DATA[numCOL]	=	round(DATA[numCOL], r)
 	return(DATA)
+}
+
+nearCEIL	=	function(DATA, VAL)	ceiling(max(DATA) / VAL) * VAL
+nearFLOOR	=	function(DATA, VAL)	floor(max(DATA) / VAL) * VAL
+
+maxPWR		=	nearCEIL(dataALL$Socket_Energy,	5000)
+maxCLK		=	nearCEIL(dataALL$Frequency,		100)
+if	(is.null(FREQ.COEF))	{
+	FREQ.COEF	=	1/1000*nearFLOOR(maxPWR/maxCLK, 10) * 0.5
+	#	with the 0.5 the Frequency will be placed more centrally on the graph
 }
 
 stats		=	function(DATA)	{
@@ -69,6 +80,7 @@ longSUM	=	pivot_longer(dataSUM,
 
 levels(longSUM$Measurement)	=	unitCOL(levels(longSUM$Measurement))
 longSUM	=	round2(longSUM)
+if (unique(longSUM$Socket) == 0)	longSUM$Socket	= NULL
 
 temp.STEADY	=	function(DATA, PERIOD, DIFF = Steady, LIST = 10, ORD = 10)	{
 	out	=	DATA[DATA$Thread == "0" & DATA$Period == PERIOD, c("Time", "CPUTemp", "CPUTempDiff")]
@@ -105,22 +117,14 @@ temp.STEADY.exp = function(DATA, DIFF = Steady, ORD = 10)	{
 # TEMPbins[TEMPbins$Period == TESTname	& TEMPbins$Freq != 0, ]
 # TEMPbins[TEMPbins$Period == "Cooldown"	& TEMPbins$Freq != 0, ]
 
-tempQUART	=	function(DATA, PERIOD, QUAN = 0.75, LIST = 10)	{
-	OP	=	"<="
-	if (PERIOD == TESTname)	OP	=	">="
+tempQUART	=	function(DATA, QUAN, LIST = 10)	{
+	if (length(unique(DATA$Thread)) > 1)	DATA	=	DATA[DATA$Thread == 0, ]
 
-	GEQ	=	function(X, Y, op)	{
-		if	(op == "==")	return(X == Y)	;	if	(op == "!=")	return(X != Y)	
-		if	(op == ">=")	return(X >= Y)	;	if	(op == ">")		return(X > Y)	
-		if	(op == "<=")	return(X <= Y)	;	if	(op == "<")		return(X < Y)
-	}
+	if (QUAN	<	0.5)	out	=	DATA[	DATA$CPUTemp >= quantile(DATA$CPUTemp, QUAN), ]
+	if (QUAN	>	0.5)	out	=	DATA[	DATA$CPUTemp <= quantile(DATA$CPUTemp, QUAN), ]
+	if (QUAN	==	0.5)	out	=	DATA[	DATA$CPUTemp == quantile(DATA$CPUTemp, QUAN), ]
 	
-	DATA[
-		DATA$Thread	==	0 & 
-		DATA$Period	==	PERIOD & 
-		GEQ(DATA$CPUTemp,	quantile(DATA[DATA$Thread == 0 & DATA$Period == PERIOD, ]$CPUTemp, QUAN), OP),
-		c("Time", "CPUTemp", "CPUTempDiff")
-	][1:LIST, ]
+	return(out[, c("Time", "CPUTemp", "CPUTempDiff")][1:LIST, ])
 }
 
 sinkTXT	=	function()	{
@@ -145,40 +149,44 @@ sinkTXT	=	function()	{
 		writeLines(paste0("\n", TESTname, " Period"))
 		printFrame(longSUM[longSUM$Period == TESTname, ])
 		
-		writeLines(paste0("\nSteady Temperature (", TESTname, " Period)"))
-		printFrame(temp.STEADY(dataALL, TESTname, Steady))
+		# writeLines(paste0("\nSteady Temperature (", TESTname, " Period)"))
+		# printFrame(temp.STEADY(dataALL, TESTname, Steady))
+		#	the results are not always useful and I feel the quartile stats below are better
 		
 		writeLines("\nFirst Quartile Temperature Reached")
 		writeLines(paste0(quantile(dataALL[dataALL$Period == TESTname, ]$CPUTemp, 0.25), " °C\n"))
-		printFrame(tempQUART(dataALL, TESTname, 0.25))
+		printFrame(tempQUART(dataALL[dataALL$Period	== TESTname, ], 0.25))
 		
 		writeLines("\nCooldown Period")
 		printFrame(longSUM[longSUM$Period == "Cooldown", ])
 		
-		writeLines("\nSteady Temperature (Cooldown Period)")
-		writeLines(paste0("Starting at: ", duration, "\n"))
-		printFrame(temp.STEADY(dataALL, "Cooldown", Steady))
+		# writeLines("\nSteady Temperature (Cooldown Period)")
+		# writeLines(paste0("Starting at: ", duration, "\n"))
+		# printFrame(temp.STEADY(dataALL, "Cooldown", Steady))
+		#	the results are not always useful and I feel the quartile stats below are better
 		
 		writeLines("\nThird Quartile Temperature Reached")
 		writeLines(paste0(quantile(dataALL[dataALL$Period == "Cooldown", ]$CPUTemp, 0.75), " °C\n"))
-		printFrame(tempQUART(dataALL, "Cooldown", 0.75))
+		printFrame(tempQUART(dataALL[dataALL$Period	== "Cooldown", ], 0.75))
 	sink()
 }
 
 library(tableHTML)
 OCCHTML	=	function(DATA)	{
-	tableHTML(DATA, rownames = FALSE, class="OCC") %>%
-	replace_html('style="border-collapse:collapse;" class=OCC border=1', 'align="center" border="1" cellpadding="1" cellspacing="1" style="width: 90%;"') %>%
-	replace_html(' id=\"tableHTML_header_\\d\"', '', replace_all = TRUE) %>%
-	replace_html(' id=\"tableHTML_column_\\d\"', '', replace_all = TRUE)
+	out	=	tableHTML(DATA, rownames = FALSE, class="OCC")
+	
+	out	=	replace_html(out,	'style="border-collapse:collapse;" class=OCC border=1',	'align="center" border="1" cellpadding="1" cellspacing="1" style="width: 90%;"')
+	out	=	replace_html(out,	' id=\"tableHTML_header_\\d\"',	'',	replace_all = TRUE)
+	out	=	replace_html(out,	' id=\"tableHTML_column_\\d\"',	'',	replace_all = TRUE)
+	
+	return(out)
 }
 
-writeOCC	=	function(DATA, dataNAME, name=gameGAQF, fold = "")	{
-	if	(fold != "")	{
-		write_tableHTML(OCCHTML(DATA), file = paste0(fold, "\\", name, " - ", dataNAME,".html"))
-	}	else	{
-		write_tableHTML(OCCHTML(DATA), file = paste0(name, " - ", dataNAME,".html"))
-	}
+writeOCC	=	function(DATA, dataNAME, name=testNAME, fold = "")	{
+	filePath	=	paste0(name, " - ", dataNAME,".html")
+	if	(fold != "")	filePath	=	paste0(fold, "\\", filePath)
+	
+	write_tableHTML(OCCHTML(DATA),	file = filePath)
 }
 
 sinkHTML = function()	{
@@ -202,7 +210,7 @@ CAPTION	=	paste0(TESTname,	"\n",	CPUname)
 if (COOLERname != "")	CAPTION =	paste0(CAPTION, "\n", COOLERname)
 CAPTION	=	labs(caption = CAPTION)
 
-TEMP_point	=	function(DATA = dataALL, COEF = 1){
+TEMP_point	=	function(DATA = dataALL, COEF = 1)	{
 	geom_point(
 		data	=	DATA,
 		aes(y	=	CPUTemp*COEF, 			color	=	"Temperature"),
@@ -226,6 +234,7 @@ CORE_point	=	function(DATA = dataALL, COEF = 1/1000)	{
 	geom_point(
 		data	=	DATA,
 		aes(y	=	Core_Energy*COEF,	color	=	"Core Power"),
+		stat	=	"unique",
 		# color	=	"green",
 		show.legend	=	TRUE
 	)
@@ -244,7 +253,8 @@ unCORE_point	=	function(DATA = dataALL, COEF = 1/1000)	{
 FREQ_point	=	function(DATA = dataALL, COEF = 1/1000, MEAN = FALSE, MAX = FALSE, ALPHA = .20)	{
 	if (MEAN)	{	return(
 		geom_point(
-			aes(group = Time,	y	=	Frequency*FREQ.COEF,	color	=	"Frequency"),
+			data	=	DATA,
+			aes(y	=	Frequency*COEF,	color	=	"Frequency"),
 			alpha	=	ALPHA,
 			stat	=	"summary",
 			fun		=	mean,
@@ -253,7 +263,8 @@ FREQ_point	=	function(DATA = dataALL, COEF = 1/1000, MEAN = FALSE, MAX = FALSE, 
 	}
 	if (MAX)	{	return(
 		geom_point(
-			aes(group = Time,	y	=	Frequency*FREQ.COEF,	color	=	"Frequency"),
+			data	=	DATA,
+			aes(y	=	Frequency*COEF,	color	=	"Frequency"),
 			alpha	=	ALPHA,
 			stat	=	"summary",
 			fun		=	max,
@@ -298,7 +309,7 @@ themeSCALES	=	function(COEF = FREQ.COEF){
 			)
 		),
 		scale_y_continuous(
-			breaks		=	seq(0, 1800, by = 10),
+			breaks		=	seq(0, maxPWR/100, by = 10),
 			limits		=	c(0, NA),
 			expand		=	c(0.02, 0),
 			sec.axis	=	dup_axis(
@@ -369,7 +380,7 @@ graphHIST	=	function(TYPE, TITLE, X.name, X.break, X.limits, FILL.unit, FILL.mid
 		legend.key.width			=	unit(0.045, "npc")
 		) + 	
 	geom_boxplot(outlier.alpha = 0, 				coef = 0,	width = Inf,	position = position_nudge(y = 0.5)) + 
-	geom_histogram(aes(y = stat(ndensity),	fill = after_stat(x)),	binwidth = binWID) + 
+	geom_histogram(aes(y = after_stat(ncount),	fill = after_stat(x)),	binwidth = binWID) + 
 	geom_boxplot(outlier.alpha = 0, alpha = 0.15,	coef = 0,	width = Inf,	position = position_nudge(y = 0.5)) + 
 	geom_vline(data = dataALL[dataALL$Period == "Warm-up", ],	aes(xintercept = mean(get(TYPE)*COEF)), 	color = "red") + 
 	geom_vline(data = dataALL[dataALL$Period == TESTname, ],	aes(xintercept = mean(get(TYPE)*COEF)), 	color = "red") + 
@@ -379,7 +390,7 @@ graphHIST	=	function(TYPE, TITLE, X.name, X.break, X.limits, FILL.unit, FILL.mid
 		labeller = labeller(Period = function(IN) gsub(" - ", "\n", IN))
 		) +
 	scale_x_continuous(
-		name = X.name,
+		name	=	X.name,
 		breaks	=	seq(0, 10000, by = X.break),
 		limits	=	X.limits,
 		guide 	=	guide_axis(n.dodge = 2),
@@ -394,7 +405,7 @@ HIST.Temp		=	graphHIST(
 	TITLE		=	"CPU Temperature Normalized Distribution by Period",
 	X.name		=	"Temperature (°C)",
 	X.break		=	5,
-	X.limits	=	NULL,
+	X.limits	=	c(0, NA),
 	FILL.unit	=	"°C",
 	FILL.mid	=	60,
 	FILL.limits	=	c(25, 95),
@@ -410,7 +421,7 @@ HIST.Frequency	=	graphHIST(
 	X.limits	=	c(2000, NA),
 	FILL.unit	=	"MHz",
 	FILL.mid	=	3000,
-	FILL.limits	=	c(2000, 4500),
+	FILL.limits	=	c(2000, nearCEIL(maxCLK, 500)),
 	FILL.breaks	=	seq(0, 10000, by = 500)
 	)
 
@@ -420,14 +431,43 @@ HIST.Socket		=	graphHIST(
 	TITLE		=	"Socket Power Normalized Distribution by Period",
 	X.name		=	"Power (W)",
 	X.break		=	10,
-	X.limits	=	NULL,
+	X.limits	=	c(0, NA),
 	FILL.unit	=	"W",
 	FILL.mid	=	80,
-	FILL.limits	=	c(0, 180),
-	FILL.breaks	=	seq(0, 180, by = 30),
+	FILL.limits	=	c(0, nearCEIL(maxPWR/1000 + 1, 30)),
+	FILL.breaks	=	seq(0, nearCEIL(maxPWR/1000 + 1, 30), by = 30),
 	COEF		=	1/1000
 	)
 
+#Core Power
+HIST.Core		=	graphHIST(
+	TYPE		=	"Core_Energy",
+	TITLE		=	"Core Power Normalized Distribution by Period",
+	X.name		=	"Power (W)",
+	X.break		=	3,
+	X.limits	=	c(0, NA),
+	FILL.unit	=	"W",
+	FILL.mid	=	3,
+	FILL.limits	=	c(0, 20),
+	FILL.breaks	=	seq(0, nearCEIL(10/1000 + 1, 20), by = 3),
+	COEF		=	1/1000,
+	binWID		=	0.01
+	)
+
+#Uncore Power
+HIST.Uncore		=	graphHIST(
+	TYPE		=	"Uncore_Energy",
+	TITLE		=	"Uncore Power Normalized Distribution by Period",
+	X.name		=	"Power (W)",
+	X.break		=	5,
+	X.limits	=	c(0, NA),
+	FILL.unit	=	"W",
+	FILL.mid	=	30,
+	FILL.limits	=	c(0, 60),
+	FILL.breaks	=	seq(0, nearCEIL(10/1000 + 1, 75), by = 15),
+	COEF		=	1/1000,
+	binWID		=	0.01
+	)
 
 sinkTXT()
 sinkHTML()
@@ -449,3 +489,7 @@ message("Frequency by Period")
 customSave("Hist - Frequency",		plot = HIST.Frequency,	width	=	gHEIGH * 1.25)
 message("Socket Power by Period")
 customSave("Hist - Socket",			plot = HIST.Socket,		width	=	gHEIGH * 1.25)
+# message("Core Power by Period")
+# customSave("Hist - Core",			plot = HIST.Core,		width	=	gHEIGH * 1.25)
+# message("Uncore Power by Period")
+# customSave("Hist - Uncore",			plot = HIST.Uncore,		width	=	gHEIGH * 1.25)

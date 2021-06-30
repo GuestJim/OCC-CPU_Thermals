@@ -8,7 +8,7 @@ uProf	=	read_csv("AMD-CPU Profile.csv", skip = LINE)
 threadFREQ	=	pivot_longer(uProf[, c(1, grep("thread", colnames(uProf)))],
 			cols			=	-1,
 			names_to		=	"Thread",
-			names_pattern	=	"thread(.*)-core-effective-frequency",
+			names_pattern	=	"thread([:digit:]+)-core-effective-frequency",
 			# names_ptypes	=	list(Thread = numeric()),
 			values_to		=	"Frequency"
 )
@@ -17,7 +17,7 @@ threadFREQ$Core	=	floor(as.numeric(threadFREQ$Thread)/2)
 coreENG		=	pivot_longer(uProf[, c(1, grep("core.*-energy", colnames(uProf)))],
 			cols			=	-1,
 			names_to		=	"Core",
-			names_pattern	=	"core(.*)-energy",
+			names_pattern	=	"core([:digit:]+)-energy",
 			names_ptypes	=	list(Core = factor(ordered = TRUE)),
 			values_to		=	"Core_Energy"
 )
@@ -25,12 +25,12 @@ coreENG		=	pivot_longer(uProf[, c(1, grep("core.*-energy", colnames(uProf)))],
 sockENG		=	pivot_longer(uProf[, c(1, grep("socket", colnames(uProf)))],
 			cols			=	-1,
 			names_to		=	"Socket",
-			names_pattern	=	"socket(.*)-package-energy",
+			names_pattern	=	"socket([:digit:]+)-package-energy",
 			names_ptypes	=	list(Socket = factor(ordered = TRUE)),
 			values_to		=	"Socket_Energy"
 )
 
-sockENG$Uncore_Energy	=	sockENG$Socket_Energy - rowSums(uProf[, grep("core(.*)-energy", colnames(uProf))])
+sockENG$Uncore_Energy	=	rowSums(uProf[, grep("socket(.*)-package-energy", colnames(uProf))]) - rowSums(uProf[, grep("core(.*)-energy", colnames(uProf))])
 #	subtracts the energy measured for each core from the Socket energy measurement, giving us the remaining Uncore energy usage
 #		curiously can result in negative values which I am taking to be a measurement error and just ignoring
 
