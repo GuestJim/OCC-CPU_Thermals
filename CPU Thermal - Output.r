@@ -16,22 +16,19 @@ round2	=	function(DATA, r = 2)	{
 	return(DATA)
 }
 
-nearCEIL	=	function(DATA, VAL)	ceiling(max(DATA) / VAL) * VAL
-nearFLOOR	=	function(DATA, VAL)	floor(max(DATA) / VAL) * VAL
+nearCEIL	=	function(DATA, VAL)	ceiling(max(DATA, na.rm = TRUE) / VAL) * VAL
+nearFLOOR	=	function(DATA, VAL)	floor(max(DATA, na.rm = TRUE) / VAL) * VAL
 
 maxPWR		=	nearCEIL(dataALL$Socket_Energy,	5000)
-maxCLK		=	nearCEIL(dataALL$Frequency,		100)
-if	(is.null(FREQ.COEF))	{
-	FREQ.COEF	=	1/1000*nearFLOOR(maxPWR/maxCLK, 10) * 0.5
-	#	with the 0.5 the Frequency will be placed more centrally on the graph
-}
+maxCLK		=	nearCEIL(dataALL$Frequency,		500)
+if	(!is.numeric(FREQ.COEF))	FREQ.COEF	=	signif(exp(round(log(maxPWR/maxCLK / 1000), 0)), 1)
 
 stats		=	function(DATA)	{
 	return(c(
-		Min		=	min(DATA),
-		Median	=	median(DATA),
-		Mean	=	mean(DATA),
-		Max		=	max(DATA)
+		Min		=	min(DATA,		na.rm	=	TRUE),
+		Median	=	median(DATA,	na.rm	=	TRUE),
+		Mean	=	mean(DATA,		na.rm	=	TRUE),
+		Max		=	max(DATA,		na.rm	=	TRUE)
 	)	)
 }
 
@@ -46,23 +43,31 @@ sepCOL	=	function(aggOUT)	{
 	}
 	return(out)
 }
+remUNI	=	function(IN)	IN[, -intersect(
+	which(!sapply(IN, is.numeric)),
+	which(lapply(lapply(IN, unique), length) == 1))
+	]
+#	identifies the columns identifying the groups first so it will not alter the data
 
 unitCOL	=	function(DATA)	{
 	levs	=	levels(DATA)
 	if	(is.character(DATA))	levs	=	DATA
-	levs[grep("CPUTemp", levs)]		=	paste0(levs[grep("CPUTemp", levs)],		" (°C)")
-	levs[grep("Frequency", levs)]	=	paste0(levs[grep("Frequency", levs)],	" (MHz)")
-	levs[grep("Energy", levs)]		=	paste0(levs[grep("Energy", levs)],		" (mJ)")
+	levs[grep("CPU_Temp",	levs)]	=	paste0(levs[grep("CPU_Temp",	levs)],	" (°C)")
+	levs[grep("Frequency",	levs)]	=	paste0(levs[grep("Frequency",	levs)],	" (MHz)")
+	levs[grep("Energy",		levs)]	=	paste0(levs[grep("Energy",		levs)],	" (mJ)")
 	
 	return(rem_(levs))
 }
 
 GROUPS	=	list(
+		CPU				=	dataALL$CPU,
+		Cooler			=	dataALL$Cooler,
+		Test			=	dataALL$Test,
 		Period			=	dataALL$Period,
 		Socket			=	dataALL$Socket
 		)
 DATAS	=	list(
-		CPUTemp			=	dataALL$CPUTemp,
+		CPU_Temp		=	dataALL$CPU_Temp,
 		Frequency		=	dataALL$Frequency,
 		Socket_Energy	=	dataALL$Socket_Energy,
 		Core_Energy		=	dataALL$Core_Energy,
@@ -70,9 +75,10 @@ DATAS	=	list(
 		)
 
 dataSUM	=	sepCOL(aggregate(DATAS, GROUPS, stats))
+dataSUM	=	remUNI(dataSUM)
 
 longSUM	=	pivot_longer(dataSUM,
-	cols			=	-c(1:2),
+	cols			=	which(sapply(dataSUM, is.numeric)),
 	names_to		=	c("Measurement", ".value"),
 	names_sep		=	' - ',
 	names_ptypes	=	list(Measurement = factor(ordered = TRUE))
@@ -80,51 +86,48 @@ longSUM	=	pivot_longer(dataSUM,
 
 levels(longSUM$Measurement)	=	unitCOL(levels(longSUM$Measurement))
 longSUM	=	round2(longSUM)
-if (unique(longSUM$Socket) == 0)	longSUM$Socket	= NULL
 
-temp.STEADY	=	function(DATA, PERIOD, DIFF = Steady, LIST = 10, ORD = 10)	{
-	out	=	DATA[DATA$Thread == "0" & DATA$Period == PERIOD, c("Time", "CPUTemp", "CPUTempDiff")]
+tempCROSS	=	function(DATA, PERIOD, QUAN, OP = NULL, LIST = 10)	{
+	COLS	=	c("Time", "CPU_Temp", "CPU_Temp_Diff")
+	out		=	DATA[DATA$Thread == 0 & DATA$Period == PERIOD, COLS]
+	if (PERIOD == "Cooldown")	out$dTime	=	out$Time - duration
 	
-	out$TEST	=	c(diff(out$CPUTemp, differences = ORD), rep(0, ORD))
-#	by using the differences argument to increase the order of the difference, more values are used, effectively searching for a wider list of stable temperatures
-	return(out[abs(out$TEST) <= DIFF,	c("Time", "CPUTemp", "CPUTempDiff")][1:LIST, ])
-}
-
-#	the below function works but is much slower than the above, even if it is technically more appropriate as it uses the first-order difference
-temp.STEADY.exp = function(DATA, DIFF = Steady, ORD = 10)	{
-#	ORD is different here, being the number of the temperature measurements to use
-	out	=	data.frame("Time" = DATA[DATA$Thread == 0, "Time"], "Steady" = NA)
+	if (QUAN < 1)	LIM	=	quantile(out$CPU_Temp, QUAN)
+	if (QUAN > 1)	LIM	=	QUAN
 	
-	for (place in 1:nrow(out))	{
-		out$Steady[place]	=	 all(	abs(DATA[DATA$Thread == 0, ][seq(place, place + ORD - 1), ]$CPUTempDiff)	<= DIFF	)
+	if (is.null(OP))	{
+		if (PERIOD == TESTname)		OP	=	">="
+		if (PERIOD == "Cooldown")	OP	=	"<="
 	}
 	
-	return(merge(DATA, out, by = "Time"))
+	if (OP == "<=")		return(out[out$CPU_Temp <= LIM, ][1:LIST, ])
+	if (OP == ">=")		return(out[out$CPU_Temp >= LIM, ][1:LIST, ])
 }
 
-#	adds a Steady column to dataALL that identifies if the 10 consecutive CPUTempDiff values are below 0.5
-# dataALL	=	temp.STEADY.exp(dataALL, Steady)
 
-#	LIST	=	10
-# dataALL[dataALL$Thread == 0, dataALL$Steady == TRUE &	dataALL$Period == "Warm-up",	c("Time", "CPUTemp", "CPUTempDiff")][1:LIST, ]
-# dataALL[dataALL$Thread == 0, dataALL$Steady == TRUE &	dataALL$Period == TESTname,		c("Time", "CPUTemp", "CPUTempDiff")][1:LIST, ]
-# dataALL[dataALL$Thread == 0, dataALL$Steady == TRUE &	dataALL$Period == "Cooldown",	c("Time", "CPUTemp", "CPUTempDiff")][1:LIST, ]
-
-
-#	bins of CPUTemp data, not used but useful to keep I think
-# TEMPbins	=	as.data.frame(table(round2(dataALL[, c("Period", "CPUTemp")], 0)))
-# TEMPbins[TEMPbins$Period == "Warm-up"	& TEMPbins$Freq != 0, ]
-# TEMPbins[TEMPbins$Period == TESTname	& TEMPbins$Freq != 0, ]
-# TEMPbins[TEMPbins$Period == "Cooldown"	& TEMPbins$Freq != 0, ]
-
-tempQUART	=	function(DATA, QUAN, LIST = 10)	{
-	if (length(unique(DATA$Thread)) > 1)	DATA	=	DATA[DATA$Thread == 0, ]
-
-	if (QUAN	<	0.5)	out	=	DATA[	DATA$CPUTemp >= quantile(DATA$CPUTemp, QUAN), ]
-	if (QUAN	>	0.5)	out	=	DATA[	DATA$CPUTemp <= quantile(DATA$CPUTemp, QUAN), ]
-	if (QUAN	==	0.5)	out	=	DATA[	DATA$CPUTemp == quantile(DATA$CPUTemp, QUAN), ]
+#	returns the linear regression slopes for certain variables as a data frame
+CPUslopes	=	function(DATA = dataALL, PERIOD = TESTname,	WID = 0.1, OFF = 0.01)	{
+	dataTEST	=	dataALL[dataALL$Period == PERIOD, ]
+	PERCS	=	c(OFF,	WID + OFF,	1 - WID - OFF,	1 - OFF)
+	SECTS	=	quantile(dataTEST$Time, PERCS)
 	
-	return(out[, c("Time", "CPUTemp", "CPUTempDiff")][1:LIST, ])
+	slope	=	function(DATA = dataTEST)	{
+		c(
+		coef(lm(CPU_Temp			~	Time,	data = DATA))[2],
+		coef(lm(Frequency			~	Time,	data = DATA))[2],
+		coef(lm(Socket_Energy/1000	~	Time,	data = DATA))[2],
+		coef(lm(Core_Energy/1000	~	Time,	data = DATA))[2]
+		)
+	}
+	
+	out	=	rbind(
+		slope(),
+		slope(dataTEST[SECTS[1] <= dataTEST$Time & dataTEST$Time < SECTS[2], ]),
+		slope(dataTEST[SECTS[3] <= dataTEST$Time & dataTEST$Time < SECTS[4], ])
+		)
+	colnames(out)	=	c("CPU_Temp",	"Frequency",	"Socket_Power",	"Core_Power")
+	rownames(out)	=	c("Test Period",	paste0(PERCS[1]*100, "% to ", PERCS[2]*100, "%"),	paste0(PERCS[3] * 100, "% to ", PERCS[4]*100, "%"))
+	return(out)
 }
 
 sinkTXT	=	function()	{
@@ -135,58 +138,64 @@ sinkTXT	=	function()	{
 		writeLines(TESTname)
 		writeLines(CPUname)
 		writeLines(COOLERname)
+		writeLines(ifelse(is.numeric(PULSE),	paste0("Pulse pause length, in addition to loading:\t", PULSE, " s"),	"")	)
 		
 		writeLines("\nIgnore negative Uncore Energy")
 		
 		writeLines("\nWarm-up Period")
 		printFrame(longSUM[longSUM$Period == "Warm-up", ])
 		
-		# writeLines("\nSteady Temperature (Warm-up Period)")
-		# writeLines(paste0("\nStarting at: ", -warm))
-		# printFrame(temp.STEADY(dataALL, "Warm-up", Steady))
-		
 		
 		writeLines(paste0("\n", TESTname, " Period"))
 		printFrame(longSUM[longSUM$Period == TESTname, ])
 		
-		# writeLines(paste0("\nSteady Temperature (", TESTname, " Period)"))
-		# printFrame(temp.STEADY(dataALL, TESTname, Steady))
-		#	the results are not always useful and I feel the quartile stats below are better
+		if (!is.null(FREQspec))	{
+			writeLines("\nFrequency Percentages")
+			dataTEST	=	dataALL[dataALL$Period == TESTname, ]
+			dataTEST	=	if (MULTI)	dataTEST$Frequency else as.vector(by(dataTEST$Frequency, dataTEST$Time, max))
+			ECDF	=	ecdf(dataTEST)
+			BASE	=	min(FREQspec)
+			
+			LESS	=	ECDF(FREQspec - 0.01)				;	names(LESS)	=	paste0("<",	FREQspec,	" MHz")
+			EQUA	=	diff(ECDF(c(BASE - 0.01, BASE)))	;	names(EQUA)	=	paste0("=",	BASE,		" MHz")
+
+			print(round(c(LESS, EQUA)[order(substring(names(c(LESS, EQUA)), 2))] * 100, 2))
+		}
+		
+		writeLines("\nLinear Model Slopes:")
+		print(CPUslopes())
+		writeLines("\nLinear Model Slopes (minute):")
+		print(CPUslopes() * 60)
 		
 		writeLines("\nFirst Quartile Temperature Reached")
-		writeLines(paste0(quantile(dataALL[dataALL$Period == TESTname, ]$CPUTemp, 0.25), " °C\n"))
-		printFrame(tempQUART(dataALL[dataALL$Period	== TESTname, ], 0.25))
+		writeLines(paste0(quantile(dataALL[dataALL$Period == TESTname, ]$CPU_Temp, 0.25), " °C\n"))
+		printFrame(tempCROSS(dataALL, TESTname, 0.25, ">="))
+		
 		
 		writeLines("\nCooldown Period")
 		printFrame(longSUM[longSUM$Period == "Cooldown", ])
-		
-		# writeLines("\nSteady Temperature (Cooldown Period)")
-		# writeLines(paste0("Starting at: ", duration, "\n"))
-		# printFrame(temp.STEADY(dataALL, "Cooldown", Steady))
-		#	the results are not always useful and I feel the quartile stats below are better
-		
+
 		writeLines("\nThird Quartile Temperature Reached")
-		writeLines(paste0(quantile(dataALL[dataALL$Period == "Cooldown", ]$CPUTemp, 0.75), " °C\n"))
-		printFrame(tempQUART(dataALL[dataALL$Period	== "Cooldown", ], 0.75))
+		writeLines(paste0(quantile(dataALL[dataALL$Period == "Cooldown", ]$CPU_Temp, 0.75), " °C\n"))
+		printFrame(tempCROSS(dataALL, "Cooldown", 0.75, "<="))
 	sink()
 }
 
-library(tableHTML)
-OCCHTML	=	function(DATA)	{
-	out	=	tableHTML(DATA, rownames = FALSE, class="OCC")
-	
-	out	=	replace_html(out,	'style="border-collapse:collapse;" class=OCC border=1',	'align="center" border="1" cellpadding="1" cellspacing="1" style="width: 90%;"')
-	out	=	replace_html(out,	' id=\"tableHTML_header_\\d\"',	'',	replace_all = TRUE)
-	out	=	replace_html(out,	' id=\"tableHTML_column_\\d\"',	'',	replace_all = TRUE)
-	
-	return(out)
-}
+writeOCC	=	function(DATA, dataNAME, name=TESTname, fold = "")	{
+	if (!require(tableHTML))	return(NULL)
+	#	if tableHTML is not present to be loaded, no HTML files will be produced
+	OCCHTML	=	function(DATA)	{
+		tableHTML(DATA, rownames = FALSE, class="OCC") %>%
+		replace_html('style="border-collapse:collapse;" class=OCC border=1', 'align="center" border="1" cellpadding="1" cellspacing="1" style="width: 90%;"') %>%
+		replace_html(' id=\"tableHTML_header_\\d\"', '', replace_all = TRUE) %>%
+		replace_html(' id=\"tableHTML_column_\\d\"', '', replace_all = TRUE)
+	}
 
-writeOCC	=	function(DATA, dataNAME, name=testNAME, fold = "")	{
-	filePath	=	paste0(name, " - ", dataNAME,".html")
-	if	(fold != "")	filePath	=	paste0(fold, "\\", filePath)
-	
-	write_tableHTML(OCCHTML(DATA),	file = filePath)
+	if	(fold != "")	{
+		write_tableHTML(OCCHTML(DATA), file = paste0(fold, "\\", name, " - ", dataNAME,".html"))
+	}	else	{
+		write_tableHTML(OCCHTML(DATA), file = paste0(name, " - ", dataNAME,".html"))
+	}
 }
 
 sinkHTML = function()	{
@@ -206,14 +215,13 @@ customSave	=	function(type="", device=ggdevice, plot = last_plot(), width=gWIDTH
 	}
 }
 
-CAPTION	=	paste0(TESTname,	"\n",	CPUname)
-if (COOLERname != "")	CAPTION =	paste0(CAPTION, "\n", COOLERname)
-CAPTION	=	labs(caption = CAPTION)
+CAPTION	=	c(CPUname, COOLERname,	ifelse(is.null(PULSE), TESTname, paste0(TESTname, " (", PULSE, " s)"))	)
+CAPTION	=	labs(caption = paste(CAPTION, collapse = "\n"))
 
 TEMP_point	=	function(DATA = dataALL, COEF = 1)	{
 	geom_point(
 		data	=	DATA,
-		aes(y	=	CPUTemp*COEF, 			color	=	"Temperature"),
+		aes(y	=	CPU_Temp*COEF, 			color	=	"Temperature"),
 		stat 	=	"unique",
 		# color	=	"red",
 		shape 	=	3,
@@ -250,7 +258,7 @@ unCORE_point	=	function(DATA = dataALL, COEF = 1/1000)	{
 		show.legend	=	TRUE
 	)
 }
-FREQ_point	=	function(DATA = dataALL, COEF = 1/1000, MEAN = FALSE, MAX = FALSE, ALPHA = .20)	{
+FREQ_point	=	function(DATA = dataALL, COEF = FREQ.COEF, MEAN = FALSE, MAX = FALSE, ALPHA = .20)	{
 	if (MEAN)	{	return(
 		geom_point(
 			data	=	DATA,
@@ -282,7 +290,12 @@ FREQ_point	=	function(DATA = dataALL, COEF = 1/1000, MEAN = FALSE, MAX = FALSE, 
 
 COLORS	=	scale_color_manual(
 		name	=	NULL,
-		values	=	c(Temperature = "red",	Frequency = "blue",	"Core Power" = "green", "Socket Power" = "darkgreen", "Uncore Power" = "yellowgreen")
+		values	=	c(
+			Temperature		=	"red",
+			Frequency		=	"blue",
+			"Core Power"	=	"green",
+			"Socket Power"	=	"darkgreen",
+			"Uncore Power"	=	"yellowgreen")
 	)
 
 themeSCALES	=	function(COEF = FREQ.COEF){
@@ -330,6 +343,7 @@ graphMEAN	=	function(COEF = FREQ.COEF)	{
 	FREQ_point(COEF = COEF, MEAN = TRUE) + 
 	themeSCALES(COEF) + ylab("Temperature (°C) and Power (W)")
 }
+#	geom_smooth(aes(y = Frequency * FREQ.COEF, group = Period))	 for smooth line
 
 graphMAX	=	function(COEF = FREQ.COEF)	{
 	ggplot(data = dataALL, aes(x=Time)) + 
@@ -382,9 +396,7 @@ graphHIST	=	function(TYPE, TITLE, X.name, X.break, X.limits, FILL.unit, FILL.mid
 	geom_boxplot(outlier.alpha = 0, 				coef = 0,	width = Inf,	position = position_nudge(y = 0.5)) + 
 	geom_histogram(aes(y = after_stat(ncount),	fill = after_stat(x)),	binwidth = binWID) + 
 	geom_boxplot(outlier.alpha = 0, alpha = 0.15,	coef = 0,	width = Inf,	position = position_nudge(y = 0.5)) + 
-	geom_vline(data = dataALL[dataALL$Period == "Warm-up", ],	aes(xintercept = mean(get(TYPE)*COEF)), 	color = "red") + 
-	geom_vline(data = dataALL[dataALL$Period == TESTname, ],	aes(xintercept = mean(get(TYPE)*COEF)), 	color = "red") + 
-	geom_vline(data = dataALL[dataALL$Period == "Cooldown", ],	aes(xintercept = mean(get(TYPE)*COEF)), 	color = "red") + 
+	geom_vline(data = aggregate(dataALL[, TYPE], GROUPS, mean, na.rm = TRUE),	aes(xintercept = get(TYPE)*COEF), 	color = "red") +
 	# facet_grid(rows = vars(Period), switch = "y", labeller = labeller(Period = label_wrap_gen(20))) +
 	facet_grid(rows = vars(Period), switch = "y",
 		labeller = labeller(Period = function(IN) gsub(" - ", "\n", IN))
@@ -399,9 +411,31 @@ graphHIST	=	function(TYPE, TITLE, X.name, X.break, X.limits, FILL.unit, FILL.mid
 	scale_y_continuous(name = "", breaks = NULL)
 }
 
+FREQspec_line	=	function(FREQ	=	FREQspec)	{
+	if	(!is.numeric(FREQ))	return(NULL)
+	
+	FREQdata	=	list(
+		Period	=	ordered(levsPER[1], levsPER),	x	=	FREQ,	y	=	Inf,
+		TEXT	=	FREQ,
+		ECDF	=	round2(ecdf(dataALL[dataALL$Period == TESTname, ]$Frequency)(FREQ))
+		)
+		
+	list(geom_vline(
+			xintercept	=	FREQ,
+			color		=	"black",
+			linetype	=	"dashed"
+		), 
+		geom_text(data	=	data.frame(FREQdata),
+			aes(x = x,	y = y,	label = TEXT),
+			vjust	=	-0.5
+		),
+		coord_cartesian(clip = "off")
+	)
+}
+
 #Temperature
 HIST.Temp		=	graphHIST(
-	TYPE		=	"CPUTemp",
+	TYPE		=	"CPU_Temp",
 	TITLE		=	"CPU Temperature Normalized Distribution by Period",
 	X.name		=	"Temperature (°C)",
 	X.break		=	5,
@@ -418,12 +452,12 @@ HIST.Frequency	=	graphHIST(
 	TITLE		=	"Frequency Normalized Distribution by Period",
 	X.name		=	"Frequency (MHz)",
 	X.break		=	200,
-	X.limits	=	c(2000, NA),
+	X.limits	=	c(round(min(dataALL$Frequency)-500, -3), NA),
 	FILL.unit	=	"MHz",
 	FILL.mid	=	3000,
-	FILL.limits	=	c(2000, nearCEIL(maxCLK, 500)),
+	FILL.limits	=	c(round(min(dataALL$Frequency)-500, -3), maxCLK),
 	FILL.breaks	=	seq(0, 10000, by = 500)
-	)
+	)	+	FREQspec_line(FREQspec)
 
 #Socket Power
 HIST.Socket		=	graphHIST(
@@ -436,7 +470,8 @@ HIST.Socket		=	graphHIST(
 	FILL.mid	=	80,
 	FILL.limits	=	c(0, nearCEIL(maxPWR/1000 + 1, 30)),
 	FILL.breaks	=	seq(0, nearCEIL(maxPWR/1000 + 1, 30), by = 30),
-	COEF		=	1/1000
+	COEF		=	1/1000,
+	binWID		=	0.1
 	)
 
 #Core Power
@@ -444,12 +479,12 @@ HIST.Core		=	graphHIST(
 	TYPE		=	"Core_Energy",
 	TITLE		=	"Core Power Normalized Distribution by Period",
 	X.name		=	"Power (W)",
-	X.break		=	3,
+	X.break		=	1,
 	X.limits	=	c(0, NA),
 	FILL.unit	=	"W",
 	FILL.mid	=	3,
-	FILL.limits	=	c(0, 20),
-	FILL.breaks	=	seq(0, nearCEIL(10/1000 + 1, 20), by = 3),
+	FILL.limits	=	c(0, nearCEIL(dataALL$Core_Energy/1000, 3)),
+	FILL.breaks	=	seq(0, nearCEIL(dataALL$Core_Energy/1000, 5), by = 3),
 	COEF		=	1/1000,
 	binWID		=	0.01
 	)
@@ -463,8 +498,8 @@ HIST.Uncore		=	graphHIST(
 	X.limits	=	c(0, NA),
 	FILL.unit	=	"W",
 	FILL.mid	=	30,
-	FILL.limits	=	c(0, 60),
-	FILL.breaks	=	seq(0, nearCEIL(10/1000 + 1, 75), by = 15),
+	FILL.limits	=	c(0, nearCEIL(dataALL$Uncore_Energy/1000, 5)),
+	FILL.breaks	=	seq(0, nearCEIL(dataALL$Uncore_Energy/1000, 5), by = 15),
 	COEF		=	1/1000,
 	binWID		=	0.01
 	)
@@ -480,9 +515,9 @@ if	(MULTI)	{
 	customSave("Frequency - Max",	plot = graphMAX())
 }
 message("Frequency")
-customSave("Frequency", 		plot = graphFREQ(),		height	=	2 * length(levels(dataALL$Thread)))
+customSave("Frequency", 		plot = graphFREQ(),		height	=	2 * length(unique(dataALL$Thread)))
 message("Core Power")
-customSave("Core Power",		plot = graphPOWER(),	height	=	2 * length(levels(dataALL$Core)))
+customSave("Core Power",		plot = graphPOWER(),	height	=	2 * length(unique(dataALL$Core)))
 message("Temperature by Period")
 customSave("Hist - Temperature",	plot = HIST.Temp,		width	=	gHEIGH * 1.25)
 message("Frequency by Period")

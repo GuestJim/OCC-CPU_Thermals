@@ -8,8 +8,7 @@ TESTname	=	"!TEST!"
 MULTI		=	!MULTI!
 CPUname		=	"!CPU!"
 COOLERname	=	"!COOLER!"
-Steady		=	0.3
-PULSE		=	!PULSE!	#only relevant if test were pulsed
+PULSE		=	!PULSE!
 
 levsPER		=	c("Warm-up", TESTname, "Cooldown")
 
@@ -20,10 +19,8 @@ ggdevice	=	"png"
 gWIDTH	=	16
 gHEIGH	=	9
 app.BREAK	=	TRUE
-FREQ.COEF	=	NULL
-# FREQ.COEF	=	1/1000*20
-#	this will be set automatically in Output.r based on maximum power and clock values
-#	it might be desirable to manually tweak this value, and if you do here it will not be altered
+FREQ.COEF	=	NULL	#	Output.r will automatically set this based on maximum power and clock values
+FREQspec	=	NULL	#	for frequency specifications, can take vector
 
 if (interactive())	{
 	setwd("!PATH!")
@@ -44,5 +41,8 @@ dataALL$Thread	=	ordered(dataALL$Thread)
 dataALL$Core	=	ordered(dataALL$Core)
 dataALL$Socket	=	ordered(dataALL$Socket)
 dataALL$Period	=	ordered(dataALL$Period, levels = levsPER)
+dataALL$CPU		=	ordered(dataALL$CPU)
+dataALL$Cooler	=	ordered(dataALL$Cooler)
+dataALL$Test	=	ordered(dataALL$Test)
 
 source("@CPU Thermal - Output.r")

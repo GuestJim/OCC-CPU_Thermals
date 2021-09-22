@@ -163,7 +163,8 @@ def	_3DMARK(CODE):
 	if os.path.exists(scriptPath + "Thermal_Definitions\\" + defin + ".3dmdef"):
 		return(lnk3DMark + " --definition=\"" + scriptPath + "Thermal_Definitions\\" + defin + ".3dmdef\" --loop=0 --audio=off --online=off")
 	else:
-		return(lnk3DMark + " --definition=" + defin + ".3dmdef --loop=0 --audio=off --online=off")
+		input("No valid 3DMark definion files found.\n Press Enter to quit.")
+		sys.exit("No definition files found")
 
 optPrime95	=	[
 	"300 \t-\t Prime95 Torture Test"
@@ -258,16 +259,15 @@ def timeFUT(END):
 	return(time.strftime("%I:%M %p", time.localtime(time.time() + END)))
 
 import cpuinfo
-CPUname		=	cpuinfo.get_cpu_info()['brand']
+CPUname		=	BRAND	=	cpuinfo.get_cpu_info()['brand']
 CPUname		=	INPUT(CPUname,	"CPU Name (default: !DEF!) : ")
 
-BRAND	=	""
-if "Intel" in CPUname:
+if "Intel" in CPUname or "Intel" in BRAND:
 	BRAND	=	"Intel"
-elif "AMD" in CPUname:
+elif "AMD" in CPUname or "AMD" in BRAND:
 	BRAND	=	"AMD"
-elif BRAND == "":
-	BRAND	=	INPUT("", 		"CPU Brand (AMD or Intel):")
+else:
+	BRAND	=	INPUT("", 		"CPU Brand (AMD or Intel): ")
 
 COOLERname	=	INPUT("",		"CPU Cooler Name (default empty): ")
 
@@ -298,7 +298,7 @@ if COOLERname == "":
 else:
 	COOLERfold	= 	COOLERname + "\\"
 
-if os.path.exists(scriptPath + "GPU Thermal.py"):
+if os.path.exists(scriptPath + "GPU Thermal - 3dmdef.py"):
 	dataPath	=	scriptPath + "Data CPU\\" + 	COOLERfold + TIME + "\\"
 else:
 	dataPath	=	scriptPath + "Data\\" + 		COOLERfold + TIME + "\\"
@@ -311,7 +311,9 @@ if BRAND == "Intel":
 
 if BRAND == "AMD":
 	GPUz	=	subprocess.Popen(lnkGPUz + " -minimized", shell=True)
-	os.system("start " + lnkAMDuProf + " timechart --event energy --event frequency --interval 1000 --duration " + str(length) + " -o \"" + dataPath + "AMD-CPU Profile\"")
+	# os.system("start " + lnkAMDuProf + " timechart --event energy --event frequency --interval 1000 --duration " + str(length) + " -o \"" + dataPath + "AMD-CPU Profile\"")
+	os.system("start " + lnkAMDuProf + " timechart --event Power,Frequency,Temperature,P-State --interval 1000 --duration " + str(length) + " -o \"" + dataPath + "AMD-CPU Profile\"")
+#	the arguments apparently changed when AMD updated uProf, but Temperature support was also added
 #	start is necessary or else Python will wait until uPROF finishes before continuing
 
 #	if using a Pulsed test, uProf and Power Gadget may run short as the Pulse function allows the last loop of the test to complete, rather than killing it
@@ -322,6 +324,7 @@ time.sleep(warm)
 print("\nCPU Load\tEnds at " + timeFUT(duration))
 
 if TESTcode[2] == "0" or TESTcode[0] == "9":
+	pulse	=	"NULL"
 	Bench	=	subprocess.Popen(TEST(TESTcode), shell = True)
 	time.sleep(duration)
 
@@ -358,7 +361,7 @@ if not os.path.exists(dataPath + "@CPU Thermal - Input.r"):
 				.replace("!WARM!",		str(warm))		\
 				.replace("!PATH!",		dataPath.replace("\\", "/"))	\
 				.replace("!MULTI!",		MULTI)	\
-				.replace("!PULSE!",		pulse)	\
+				.replace("!PULSE!",		str(pulse))	\
 			)
 		fout.close()
 
