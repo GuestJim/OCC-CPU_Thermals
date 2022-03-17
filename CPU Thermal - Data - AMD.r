@@ -3,13 +3,15 @@ for (LINE in 1:length(TEXT))	{	if (TEXT[LINE] == "PROFILE RECORDS")	break	}
 #	the above loads in the uProf file to find when the data actually starts, R can properly and automatically load it.
 #	to save time, it only loads in the first 100 lines, which should be enough for most any consumer CPU, but increase that number if necessary
 
-uProf	=	read_csv("AMD-CPU Profile.csv", skip = LINE)
+uProf	=	read_csv("AMD-CPU Profile.csv", skip = LINE, guess_max = 10, lazy = TRUE, show_col_types = FALSE)
 
 threadFREQ	=	pivot_longer(uProf[, c(1, 2, grep("thread.*-core-effective-frequency", colnames(uProf)))],
 			cols			=	-c(1, 2),
 			names_to		=	"Thread",
-			names_pattern	=	"thread([:digit:]+)-core-effective-frequency",
+			names_pattern	=	"thread([[:digit:]]+)-core-effective-frequency",
 			# names_ptypes	=	list(Thread = numeric()),
+			# names_ptypes	=	list(Thread = factor(ordered = TRUE)),
+			names_transform		=	list(Thread = as.numeric),
 			values_to		=	"Frequency"
 )
 threadFREQ$Core	=	floor(as.numeric(threadFREQ$Thread)/2)
@@ -17,15 +19,16 @@ threadFREQ$Core	=	floor(as.numeric(threadFREQ$Thread)/2)
 coreENG		=	pivot_longer(uProf[, c(1, 2, which(startsWith(colnames(uProf), "core")))],
 			cols			=	-c(1, 2),
 			names_to		=	"Core",
-			names_pattern	=	"core([:digit:]+)-",
-			# names_ptypes	=	list(Core = factor(ordered = TRUE)),
+			names_pattern	=	"core([[:digit:]]+)-",
+			names_ptypes	=	list(Core = factor(ordered = TRUE)),
+			# names_transform		=	list(Core = as.numeric),
 			values_to		=	"Core_Energy"
 )
 
 sockENG		=	pivot_longer(uProf[, c(1, 2, grep("socket.*-package", colnames(uProf)))],
 			cols			=	-c(1, 2),
 			names_to		=	"Socket",
-			names_pattern	=	"socket([:digit:]+)-package",
+			names_pattern	=	"socket([[:digit:]]+)-package",
 			names_ptypes	=	list(Socket = factor(ordered = TRUE)),
 			values_to		=	"Socket_Energy"
 )
@@ -34,7 +37,7 @@ if (any(grepl("socket.*-temperature", colnames(uProf))))	{
 	sockTEMP	=	pivot_longer(uProf[, c(1, 2, grep("socket.*-temperature", colnames(uProf)))],
 				cols			=	-c(1, 2),
 				names_to		=	"Socket",
-				names_pattern	=	"socket([:digit:]+)-temperature",
+				names_pattern	=	"socket([[:digit:]]+)-temperature",
 				names_ptypes	=	list(Socket = factor(ordered = TRUE)),
 				values_to		=	"Socket_Temp"
 	)
@@ -57,12 +60,12 @@ uProfTALL$Time	=	as.numeric(uProfTALL$Time - min(uProfTALL$Time)) + 1
 # colnames(uProfTALL)[grep("RecordId", colnames(uProfTALL))]	=	"Time"
 
 
-GPUz	=	read_csv("GPU-Z Sensor Log.txt")
-GPUz	=	GPUz[, pmatch(c("Date", "CPU Temperature"), colnames(GPUz))]
+GPUz	=	read_csv("GPU-Z Sensor Log.txt", guess_max = 10, lazy = TRUE, show_col_types = FALSE, col_select = contains(c("Date", "CPU Temperature")))
+# GPUz	=	GPUz[, pmatch(c("Date", "CPU Temperature"), colnames(GPUz))]
 colnames(GPUz)	=	c("Timestamp", "CPU_Temp")
 
 GPUz$Time	=	as.numeric(GPUz$Timestamp)
-GPUz$Time	=	GPUz$Time - min(GPUz$Time) + 1
+GPUz$Time	=	GPUz$Time - min(GPUz$Time, na.rm = TRUE) + 1
 #	converts Timestamp to number of seconds and then removes the minimum to make measurements relative, and starts at 1 to match uProf
 
 #	there is an issue with GPU-z not keeping time properly, resulting in two recordings at the same Timestamp, and mis-times where there is a double recording and then a skipped second
@@ -110,4 +113,4 @@ dataALL$CPU_Temp_Diff	=	diff.CONS(dataALL$CPU_Temp, lag = length(unique(dataALL$
 
 dataALL	=	dataALL[order(dataALL$Time, dataALL$Socket, dataALL$Core, dataALL$Thread),]
 
-write_csv(dataALL, "Combined.csv.bz2")
+# write_csv(dataALL, "Combined.csv.bz2")

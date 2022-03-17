@@ -1,4 +1,4 @@
-CPUdata	=	read_csv("Intel-CPU Profile.csv")
+CPUdata	=	read_csv("Intel-CPU Profile.csv", guess_max = 10, lazy = TRUE, show_col_types = FALSE)
 
 dataFILT	=	CPUdata[1:(nrow(CPUdata) - 15), pmatch(c(
 	"Elapsed Time (sec)",
@@ -50,4 +50,4 @@ dataALL$CPU_Temp_Diff	=	diff.CONS(dataALL$CPU_Temp, lag = length(unique(dataALL$
 
 dataALL	=	dataALL[order(dataALL$Time, dataALL$Socket, dataALL$Core, dataALL$Thread),]
 
-write_csv(dataALL, "Combined.csv.bz2")
+# write_csv(dataALL, "Combined.csv.bz2")

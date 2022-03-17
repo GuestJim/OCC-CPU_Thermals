@@ -2,15 +2,19 @@ library(readr)
 library(tidyr)
 library(ggplot2)
 
-duration	=	!DUR!
-warm		=	!WARM!
-TESTname	=	"!TEST!"
-MULTI		=	!MULTI!
-CPUname		=	"!CPU!"
-COOLERname	=	"!COOLER!"
-PULSE		=	!PULSE!
+DATA	=	new.env()
 
-levsPER		=	c("Warm-up", TESTname, "Cooldown")
+DATA$duration	=	!DUR!
+DATA$warm		=	!WARM!
+DATA$TESTname	=	"!TEST!"
+DATA$MULTI		=	!MULTI!
+DATA$CPUname		=	"!CPU!"
+DATA$COOLERname	=	"!COOLER!"
+DATA$PULSE		=	!PULSE!
+
+DATA$levsPER		=	c("Warm-up", DATA$TESTname, "Cooldown")
+
+for (obj in ls(DATA, all.names = TRUE))	assign(obj, get(obj, DATA))
 
 theme_set(theme_grey(base_size = 16))
 DPI			=	120
@@ -33,8 +37,9 @@ if (!file.exists("Combined.csv.bz2"))	{
 	# if	(grepl("Intel", CPUname))	source("~CPU Thermal - Data - Intel.r")
 	if	(file.exists("~CPU Thermal - Data - AMD.r"))		source("~CPU Thermal - Data - AMD.r")
 	if	(file.exists("~CPU Thermal - Data - Intel.r"))		source("~CPU Thermal - Data - Intel.r")
+	write_csv(dataALL, "Combined.csv.bz2")
 }	else	{
-	dataALL	=	read_csv("Combined.csv.bz2")
+	dataALL	=	read_csv("Combined.csv.bz2", guess_max = 10, lazy = TRUE, show_col_types = FALSE)
 }
 
 dataALL$Thread	=	ordered(dataALL$Thread)
@@ -44,5 +49,7 @@ dataALL$Period	=	ordered(dataALL$Period, levels = levsPER)
 dataALL$CPU		=	ordered(dataALL$CPU)
 dataALL$Cooler	=	ordered(dataALL$Cooler)
 dataALL$Test	=	ordered(dataALL$Test)
+
+DATA$dataALL	=	dataALL
 
 source("@CPU Thermal - Output.r")
