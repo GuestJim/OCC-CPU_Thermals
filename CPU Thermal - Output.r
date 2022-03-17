@@ -396,7 +396,7 @@ graphHIST	=	function(TYPE, TITLE, X.name, X.break, X.limits, FILL.unit, FILL.mid
 	geom_boxplot(outlier.alpha = 0, 				coef = 0,	width = Inf,	position = position_nudge(y = 0.5)) + 
 	geom_histogram(aes(y = after_stat(ncount),	fill = after_stat(x)),	binwidth = binWID) + 
 	geom_boxplot(outlier.alpha = 0, alpha = 0.15,	coef = 0,	width = Inf,	position = position_nudge(y = 0.5)) + 
-	geom_vline(data = aggregate(dataALL[, TYPE], GROUPS, mean, na.rm = TRUE),	aes(xintercept = get(TYPE)*COEF), 	color = "red") +
+	geom_vline(data = aggregate(dataALL[, paste0(TYPE)], GROUPS, mean, na.rm = TRUE),	aes(xintercept = x*COEF), 	color = "red") +
 	# facet_grid(rows = vars(Period), switch = "y", labeller = labeller(Period = label_wrap_gen(20))) +
 	facet_grid(rows = vars(Period), switch = "y",
 		labeller = labeller(Period = function(IN) gsub(" - ", "\n", IN))
