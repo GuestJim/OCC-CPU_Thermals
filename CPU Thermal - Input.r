@@ -33,11 +33,14 @@ if (interactive())	{
 }
 
 if (!file.exists("Combined.csv.bz2"))	{
-	# if	(grepl("AMD", CPUname))		source("~CPU Thermal - Data - AMD.r")
-	# if	(grepl("Intel", CPUname))	source("~CPU Thermal - Data - Intel.r")
-	if	(file.exists("~CPU Thermal - Data - AMD.r"))		source("~CPU Thermal - Data - AMD.r")
-	if	(file.exists("~CPU Thermal - Data - Intel.r"))		source("~CPU Thermal - Data - Intel.r")
+	hold	=	new.env()
+	# if	(grepl("AMD", CPUname))		source("~CPU Thermal - Data - AMD.r",	local = hold)
+	# if	(grepl("Intel", CPUname))	source("~CPU Thermal - Data - Intel.r",	local = hold)
+	if	(file.exists("~CPU Thermal - Data - AMD.r"))		source("~CPU Thermal - Data - AMD.r",	local = hold)
+	if	(file.exists("~CPU Thermal - Data - Intel.r"))		source("~CPU Thermal - Data - Intel.r",	local = hold)
+	#	with the hold environment, everything the Data scripts do is placed into hold, but dataALL will be placed in Global, so hold can be removed at the end
 	write_csv(dataALL, "Combined.csv.bz2")
+	rm(hold)
 }	else	{
 	dataALL	=	read_csv("Combined.csv.bz2", guess_max = 10, lazy = TRUE, show_col_types = FALSE)
 }
@@ -51,5 +54,6 @@ dataALL$Cooler	=	ordered(dataALL$Cooler)
 dataALL$Test	=	ordered(dataALL$Test)
 
 DATA$dataALL	=	dataALL
+saveRDS(DATA, "DATA.env", compress="bzip2")
 
 source("@CPU Thermal - Output.r")

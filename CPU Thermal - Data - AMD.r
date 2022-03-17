@@ -112,5 +112,6 @@ diff.CONS	=	function(DATA, DIR = "Forward", lag = 1)	{
 dataALL$CPU_Temp_Diff	=	diff.CONS(dataALL$CPU_Temp, lag = length(unique(dataALL$Thread)))
 
 dataALL	=	dataALL[order(dataALL$Time, dataALL$Socket, dataALL$Core, dataALL$Thread),]
+assign("dataALL", dataALL, envir = .GlobalEnv)
 
 # write_csv(dataALL, "Combined.csv.bz2")
