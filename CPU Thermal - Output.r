@@ -1,3 +1,4 @@
+options(encoding = 'UTF-8')
 labelBreak	=	function(breaks, SEC = FALSE, r = 2)	{
 	if (!app.BREAK)	return(breaks)
 	if (is.numeric(breaks))	breaks	=	round(breaks, r)
@@ -417,7 +418,8 @@ FREQspec_line	=	function(FREQ	=	FREQspec)	{
 	FREQdata	=	list(
 		Period	=	ordered(levsPER[1], levsPER),	x	=	FREQ,	y	=	Inf,
 		TEXT	=	FREQ,
-		ECDF	=	round2(ecdf(dataALL[dataALL$Period == TESTname, ]$Frequency)(FREQ))
+		ECDF	=	paste0("\u2190 ", round2(ecdf(dataALL[dataALL$Period == TESTname, ]$Frequency)(FREQ) * 100), "%")
+		#	\u2190 draws a left-pointing arrow
 		)
 		
 	list(geom_vline(
@@ -428,6 +430,10 @@ FREQspec_line	=	function(FREQ	=	FREQspec)	{
 		geom_text(data	=	data.frame(FREQdata),
 			aes(x = x,	y = y,	label = TEXT),
 			vjust	=	-0.5
+		),
+		geom_text(data	=	data.frame(FREQdata),
+			aes(x = x,	y = y,	label = ECDF),
+			vjust	=	-2.0,	hjust	=	0.675
 		),
 		coord_cartesian(clip = "off")
 	)
