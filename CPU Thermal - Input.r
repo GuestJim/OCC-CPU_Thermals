@@ -36,8 +36,6 @@ FILE	=	paste0(DATA$TESTname, " ~ ", DATA$COOLERname)
 
 if (!file.exists(	paste0(FILE, ".env")	))	{
 	hold	=	new.env()
-	# if	(grepl("AMD", CPUname))		source("~CPU Thermal - Data - AMD.r",	local = hold)
-	# if	(grepl("Intel", CPUname))	source("~CPU Thermal - Data - Intel.r",	local = hold)
 	if	(file.exists("~CPU Thermal - Data - AMD.r"))		source("~CPU Thermal - Data - AMD.r",	local = hold)
 	if	(file.exists("~CPU Thermal - Data - Intel.r"))		source("~CPU Thermal - Data - Intel.r",	local = hold)
 	#	with the hold environment, everything the Data scripts do is placed into hold, but dataALL will be placed in Global, so hold can be removed at the end
@@ -46,16 +44,9 @@ if (!file.exists(	paste0(FILE, ".env")	))	{
 	write_csv(dataALL, "Combined.csv.bz2")
 	
 	rm(hold)
-}	else	{
-	# dataALL	=	read_csv("Combined.csv.bz2", guess_max = 10, lazy = TRUE, show_col_types = FALSE)
-	# dataALL$Thread	=	ordered(dataALL$Thread)
-	# dataALL$Core	=	ordered(dataALL$Core)
-	# dataALL$Socket	=	ordered(dataALL$Socket)
-	# dataALL$Period	=	ordered(dataALL$Period, levels = levsPER)
-	# DATA$dataALL	=	dataALL
-	
+}	else	{	
 	DATA	=	readRDS(paste0(FILE, ".env"))
-	assign("dataALL", DATA$dataALL, envir = .GlobalEnv)
+	for (obj in ls(DATA, all.names = TRUE))	assign(obj, get(obj, DATA))	;	rm(DATA)
 	if (!file.exists("Combined.csv.bz2"))	write_csv(dataALL, "Combined.csv.bz2")
 }
 

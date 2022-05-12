@@ -33,6 +33,10 @@ sockENG		=	pivot_longer(uProf[, c(1, 2, grep("socket.*-package", colnames(uProf)
 			values_to		=	"Socket_Energy"
 )
 
+sockENG$Uncore_Energy	=	rowSums(uProf[, grep("socket(.*)-package-energy", colnames(uProf))]) - rowSums(uProf[, grep("core(.*)-energy", colnames(uProf))])
+#	subtracts the energy measured for each core from the Socket energy measurement, giving us the remaining Uncore energy usage
+#		curiously can result in negative values which I am taking to be a measurement error and just ignoring
+
 if (any(grepl("socket.*-temperature", colnames(uProf))))	{
 	sockTEMP	=	pivot_longer(uProf[, c(1, 2, grep("socket.*-temperature", colnames(uProf)))],
 				cols			=	-c(1, 2),
@@ -47,10 +51,6 @@ if (any(grepl("socket.*-temperature", colnames(uProf))))	{
 if (max(coreENG$Core_Energy) < 1000)	coreENG$Core_Energy		=	coreENG$Core_Energy * 1000
 if (max(sockENG$Socket_Energy) < 1000)	sockENG$Socket_Energy	=	sockENG$Socket_Energy * 1000
 #	newer versions of uProf use Watts instead of mJ, so for consistency the measurements are multiplied when necessary
-
-sockENG$Uncore_Energy	=	rowSums(uProf[, grep("socket(.*)-package-energy", colnames(uProf))]) - rowSums(uProf[, grep("core(.*)-energy", colnames(uProf))])
-#	subtracts the energy measured for each core from the Socket energy measurement, giving us the remaining Uncore energy usage
-#		curiously can result in negative values which I am taking to be a measurement error and just ignoring
 
 uProfTALL	=	merge(threadFREQ,	coreENG,	by = c("RecordId", "Timestamp", "Core"),	sort = FALSE)
 uProfTALL	=	merge(uProfTALL,	sockENG,	by = c("RecordId", "Timestamp"),			sort = FALSE)
@@ -104,6 +104,8 @@ dataALL$CPU		=	ordered(CPUname)
 dataALL$Cooler	=	ordered(COOLERname)
 dataALL$Test	=	ordered(TESTname)
 
+dataALL	=	dataALL[order(dataALL$Time, dataALL$Socket, dataALL$Core, dataALL$Thread),]
+
 diff.CONS	=	function(DATA, DIR = "Forward", lag = 1)	{
 	if	(DIR == "Forward")	return(c(diff(DATA, lag = lag), rep(0, lag)))
 	if	(DIR == "Backward")	return(c(rep(0, lag), diff(DATA, lag = lag)))
@@ -111,7 +113,6 @@ diff.CONS	=	function(DATA, DIR = "Forward", lag = 1)	{
 
 dataALL$CPU_Temp_Diff	=	diff.CONS(dataALL$CPU_Temp, lag = length(unique(dataALL$Thread)))
 
-dataALL	=	dataALL[order(dataALL$Time, dataALL$Socket, dataALL$Core, dataALL$Thread),]
 assign("dataALL", dataALL, envir = .GlobalEnv)
 
 # write_csv(dataALL, "Combined.csv.bz2")
