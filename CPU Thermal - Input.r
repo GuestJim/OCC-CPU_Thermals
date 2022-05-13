@@ -8,9 +8,11 @@ DATA$duration	=	!DUR!
 DATA$warm		=	!WARM!
 DATA$TESTname	=	"!TEST!"
 DATA$MULTI		=	!MULTI!
-DATA$CPUname		=	"!CPU!"
+DATA$CPUname	=	"!CPU!"
 DATA$COOLERname	=	"!COOLER!"
 DATA$PULSE		=	!PULSE!
+DATA$FREQspec	=	NULL	#	for frequency specifications, can take vector
+DATA$Toff		=	10
 
 DATA$levsPER		=	c("Warm-up", DATA$TESTname, "Cooldown")
 
@@ -24,7 +26,6 @@ gWIDTH	=	16
 gHEIGH	=	9
 app.BREAK	=	TRUE
 FREQ.COEF	=	NULL	#	Output.r will automatically set this based on maximum power and clock values
-FREQspec	=	NULL	#	for frequency specifications, can take vector
 
 if (interactive())	{
 	setwd("!PATH!")
@@ -34,18 +35,32 @@ if (interactive())	{
 
 FILE	=	paste0(DATA$TESTname, " ~ ", DATA$COOLERname)
 
-if (!file.exists(	paste0(FILE, ".env")	))	{
+if (!file.exists(	paste0(FILE, ".RData")	))	{
 	hold	=	new.env()
 	if	(file.exists("~CPU Thermal - Data - AMD.r"))		source("~CPU Thermal - Data - AMD.r",	local = hold)
 	if	(file.exists("~CPU Thermal - Data - Intel.r"))		source("~CPU Thermal - Data - Intel.r",	local = hold)
 	#	with the hold environment, everything the Data scripts do is placed into hold, but dataALL will be placed in Global, so hold can be removed at the end
 	DATA$dataALL	=	dataALL
-	saveRDS(DATA, paste0(FILE,".env"), compress="bzip2")
+	DATA$GROUPS	=	list(
+		Period			=	dataALL$Period,
+		Socket			=	dataALL$Socket
+		)
+	GROUPS	<-	DATA$GROUPS
+	DATA$DATAS	=	list(
+		CPU_Temp		=	dataALL$CPU_Temp,
+		Frequency		=	dataALL$Frequency,
+		Socket_Energy	=	dataALL$Socket_Energy,
+		Core_Energy		=	dataALL$Core_Energy,
+		Uncore_Energy	=	dataALL$Uncore_Energy
+		)
+	DATAS	<-	DATA$DATAS
+	
+	saveRDS(DATA, paste0(FILE,".RData"), compress="xz")
 	write_csv(dataALL, "Combined.csv.bz2")
 	
 	rm(hold)
 }	else	{	
-	DATA	=	readRDS(paste0(FILE, ".env"))
+	DATA	=	readRDS(paste0(FILE, ".RData"))
 	for (obj in ls(DATA, all.names = TRUE))	assign(obj, get(obj, DATA))	;	rm(DATA)
 	if (!file.exists("Combined.csv.bz2"))	write_csv(dataALL, "Combined.csv.bz2")
 }

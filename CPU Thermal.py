@@ -310,9 +310,11 @@ if BRAND == "Intel":
 	os.system("start " + lnkPowerGadget + " -resolution 1000 -duration " + str(length) + " -file \"" + dataPath + "Intel-CPU Profile.csv\"")
 
 if BRAND == "AMD":
-	GPUz	=	subprocess.Popen(lnkGPUz + " -minimized", shell=True)
+	# GPUz	=	subprocess.Popen(lnkGPUz + " -minimized", shell=True)
+	#	not necessary as uProf collects temperature data since 3.4
 	# os.system("start " + lnkAMDuProf + " timechart --event energy --event frequency --interval 1000 --duration " + str(length) + " -o \"" + dataPath + "AMD-CPU Profile\"")
-	os.system("start " + lnkAMDuProf + " timechart --event Power,Frequency,Temperature,P-State --interval 1000 --duration " + str(length) + " -o \"" + dataPath + "AMD-CPU Profile\"")
+	# os.system("start " + lnkAMDuProf + " timechart --event Power,Frequency,Temperature,P-State --interval 1000 --duration " + str(length) + " -o \"" + dataPath + "\"")
+	os.system("start " + lnkAMDuProf + " timechart --event Power,Frequency,Temperature,P-State -t 1000 --duration " + str(length) + " -o \"" + dataPath + "\"")
 #	the arguments apparently changed when AMD updated uProf, but Temperature support was also added
 #	start is necessary or else Python will wait until uPROF finishes before continuing
 
@@ -338,17 +340,17 @@ if TESTcode[2] == "1" and TESTcode[0] != "9":
 print("\nCooldown\tEnds at " + timeFUT(duration * coolCOEF))
 time.sleep(duration * coolCOEF)
 
-if BRAND == "AMD":
-	kill(GPUz.pid)
+# if BRAND == "AMD":
+	# kill(GPUz.pid)
 #	GPUz.kill() doesn't work because subprocess with shell=True makes it a separate process that cannot be controlled by Python
-	time.sleep(1)
+	# time.sleep(1)
 #	give enough time for GPUz to be killed before trying to move the file
-	if os.path.exists(scriptPath + "GPU-Z Sensor Log.txt"):
-		shutil.move(scriptPath + "GPU-Z Sensor Log.txt", dataPath + "GPU-Z Sensor Log.txt")
-	else:
-		DESKTOP	=	"\\".join(scriptPath.split("\\", 3)[:3]) + "\\Desktop\\"
-		if os.path.exists(DESKTOP + "GPU-Z Sensor Log.txt"):
-			shutil.move(DESKTOP + "GPU-Z Sensor Log.txt", dataPath + "GPU-Z Sensor Log.txt")
+	# if os.path.exists(scriptPath + "GPU-Z Sensor Log.txt"):
+		# shutil.move(scriptPath + "GPU-Z Sensor Log.txt", dataPath + "GPU-Z Sensor Log.txt")
+	# else:
+		# DESKTOP	=	"\\".join(scriptPath.split("\\", 3)[:3]) + "\\Desktop\\"
+		# if os.path.exists(DESKTOP + "GPU-Z Sensor Log.txt"):
+			# shutil.move(DESKTOP + "GPU-Z Sensor Log.txt", dataPath + "GPU-Z Sensor Log.txt")
 
 if not os.path.exists(dataPath + "@CPU Thermal - Input.r"):
 	with open(scriptPath + "CPU Thermal - Input.r", 'r') as fref, open(dataPath + "@CPU Thermal - Input.r", 'w') as fout:

@@ -61,21 +61,6 @@ unitCOL	=	function(DATA)	{
 	return(rem_(levs))
 }
 
-GROUPS	=	list(
-		CPU				=	dataALL$CPU,
-		Cooler			=	dataALL$Cooler,
-		Test			=	dataALL$Test,
-		Period			=	dataALL$Period,
-		Socket			=	dataALL$Socket
-		)
-DATAS	=	list(
-		CPU_Temp		=	dataALL$CPU_Temp,
-		Frequency		=	dataALL$Frequency,
-		Socket_Energy	=	dataALL$Socket_Energy,
-		Core_Energy		=	dataALL$Core_Energy,
-		Uncore_Energy	=	dataALL$Uncore_Energy
-		)
-
 dataSUM	=	sepCOL(aggregate(DATAS, GROUPS, stats))
 dataSUM	=	remUNI(dataSUM)
 
@@ -89,9 +74,9 @@ longSUM	=	pivot_longer(dataSUM,
 levels(longSUM$Measurement)	=	unitCOL(levels(longSUM$Measurement))
 longSUM	=	round2(longSUM)
 
-tempCROSS	=	function(DATA, PERIOD, QUAN, OP = NULL, LIST = 10)	{
+tempCROSS	=	function(IN, PERIOD, QUAN, OP = NULL, LIST = 10)	{
 	COLS	=	c("Time", "CPU_Temp", "CPU_Temp_Diff")
-	out		=	DATA[DATA$Thread == 0 & DATA$Period == PERIOD, COLS]
+	out		=	IN[IN$Thread == 0 & IN$Period == PERIOD, COLS]
 	if (PERIOD == "Cooldown")	out$dTime	=	out$Time - duration
 	
 	if (QUAN < 1)	LIM	=	quantile(out$CPU_Temp, QUAN)
