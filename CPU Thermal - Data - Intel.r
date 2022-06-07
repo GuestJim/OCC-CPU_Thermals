@@ -27,7 +27,8 @@ PERIODS	=	function(DATA,	BREAKS = c(warm, duration),	LABELS = levsPER){
 	return(out)
 }
 
-dataALL$Period	=	PERIODS(dataALL)
+# dataALL$Period	=	PERIODS(dataALL)
+dataALL$Period	=	cut(dataALL$Time, c(min(dataALL$Time), warm, duration, max(dataALL$Time)), labels = levsPER, include.lowest = TRUE, ordered_result = TRUE)
 dataALL$Time	=	dataALL$Time - warm
 dataALL$CPU		=	ordered(CPUname)
 dataALL$Cooler	=	ordered(COOLERname)
