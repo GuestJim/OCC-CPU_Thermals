@@ -53,7 +53,7 @@ remUNI	=	function(IN)	IN[, -intersect(
 unitCOL	=	function(DATA)	{
 	levs	=	levels(DATA)
 	if	(is.character(DATA))	levs	=	DATA
-	levs[grep("CPU_Temp",	levs)]	=	paste0(levs[grep("CPU_Temp",	levs)],	" (캜)")
+	levs[grep("CPU_Temp",	levs)]	=	paste0(levs[grep("CPU_Temp",	levs)],	" (째C)")
 	levs[grep("Frequency",	levs)]	=	paste0(levs[grep("Frequency",	levs)],	" (MHz)")
 	levs[grep("Energy",		levs)]	=	paste0(levs[grep("Energy",		levs)],	" (mJ)")
 	
@@ -169,7 +169,7 @@ sinkTXT	=	function()	{
 		print(CPUslopes() * 60)
 		
 		writeLines("\nFirst Quartile Temperature Reached")
-		writeLines(paste0(quantile(dataALL[dataALL$Period == TESTname, ]$CPU_Temp, 0.25), " 캜\n"))
+		writeLines(paste0(quantile(dataALL[dataALL$Period == TESTname, ]$CPU_Temp, 0.25), " 째C\n"))
 		printFrame(tempCROSS(dataALL, TESTname, 0.25, ">="))
 		
 		
@@ -177,7 +177,7 @@ sinkTXT	=	function()	{
 		printFrame(longSUM[longSUM$Period == "Cooldown", ])
 
 		writeLines("\nThird Quartile Temperature Reached")
-		writeLines(paste0(quantile(dataALL[dataALL$Period == "Cooldown", ]$CPU_Temp, 0.75), " 캜\n"))
+		writeLines(paste0(quantile(dataALL[dataALL$Period == "Cooldown", ]$CPU_Temp, 0.75), " 째C\n"))
 		printFrame(tempCROSS(dataALL, "Cooldown", 0.75, "<="))
 	sink()
 }
@@ -342,7 +342,7 @@ graphMEAN	=	function(COEF = FREQ.COEF)	{
 	TEMP_point() + 
 	SOCK_point() + 
 	FREQ_point(COEF = COEF, MEAN = TRUE) + 
-	themeSCALES(COEF) + ylab("Temperature (캜) and Power (W)")
+	themeSCALES(COEF) + ylab("Temperature (째C) and Power (W)")
 }
 #	geom_smooth(aes(y = Frequency * FREQ.COEF, group = Period))	 for smooth line
 
@@ -352,7 +352,7 @@ graphMAX	=	function(COEF = FREQ.COEF)	{
 	TEMP_point() + 
 	SOCK_point() + 
 	FREQ_point(COEF = COEF, MAX = TRUE) + 
-	themeSCALES(COEF) + ylab("Temperature (캜) and Power (W)")
+	themeSCALES(COEF) + ylab("Temperature (째C) and Power (W)")
 }
 
 graphFREQ	=	function(COEF = FREQ.COEF)	{
@@ -366,7 +366,7 @@ graphFREQ	=	function(COEF = FREQ.COEF)	{
 	facet_grid(rows = vars(Core, Thread),	switch = "y", labeller	=	
 		labeller(Core	=	function(IN) paste0("Core: ", IN), Thread	=	function(IN) paste0("Thread: ", IN))
 		) + 
-	themeSCALES(COEF) + ylab("Temperature (캜) and Power (W)")
+	themeSCALES(COEF) + ylab("Temperature (째C) and Power (W)")
 }
 
 graphPOWER	=	function(COEF = FREQ.COEF)	{	
@@ -443,10 +443,10 @@ FREQspec_line	=	function(FREQ	=	FREQspec)	{
 HIST.Temp		=	graphHIST(
 	TYPE		=	"CPU_Temp",
 	TITLE		=	"CPU Temperature Normalized Distribution by Period",
-	X.name		=	"Temperature (캜)",
+	X.name		=	"Temperature (째C)",
 	X.break		=	5,
 	X.limits	=	c(0, NA),
-	FILL.unit	=	"캜",
+	FILL.unit	=	"째C",
 	FILL.mid	=	60,
 	FILL.limits	=	c(25, 95),
 	FILL.breaks	=	seq(30, 90, by = 10)
