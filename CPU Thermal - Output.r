@@ -23,6 +23,7 @@ nearFLOOR	=	function(DATA, VAL)	floor(max(DATA, na.rm = TRUE) / VAL) * VAL
 maxPWR		=	nearCEIL(dataALL$Socket_Energy,	5000)
 maxCLK		=	nearCEIL(dataALL$Frequency,		500)
 if	(!is.numeric(FREQ.COEF))	FREQ.COEF	=	signif(exp(round(log(maxPWR/maxCLK / 1000), 0)), 1)
+if (FREQ.COEF < 1)	FREQ.COEF	<-	1 / FREQ.COEF
 
 stats		=	function(DATA)	{
 	return(c(
@@ -263,7 +264,7 @@ FREQ_point	=	function(DATA = dataALL, COEF = FREQ.COEF, MEAN = FALSE, MAX = FALS
 	if (MEAN)	{	return(
 		geom_point(
 			data	=	DATA,
-			aes(y	=	Frequency*COEF,	color	=	"Frequency"),
+			aes(y	=	Frequency / COEF,	color	=	"Frequency"),
 			alpha	=	ALPHA,
 			stat	=	"summary",
 			fun		=	mean,
@@ -273,7 +274,7 @@ FREQ_point	=	function(DATA = dataALL, COEF = FREQ.COEF, MEAN = FALSE, MAX = FALS
 	if (MAX)	{	return(
 		geom_point(
 			data	=	DATA,
-			aes(y	=	Frequency*COEF,	color	=	"Frequency"),
+			aes(y	=	Frequency / COEF,	color	=	"Frequency"),
 			alpha	=	ALPHA,
 			stat	=	"summary",
 			fun		=	max,
@@ -282,7 +283,7 @@ FREQ_point	=	function(DATA = dataALL, COEF = FREQ.COEF, MEAN = FALSE, MAX = FALS
 	}
 	return(	geom_point(
 				data	=	DATA,
-				aes(y	=	Frequency*COEF,	color	=	"Frequency"),
+				aes(y	=	Frequency / COEF,	color	=	"Frequency"),
 				alpha	=	ALPHA,
 				# color	=	"blue",
 				show.legend	=	TRUE
@@ -344,7 +345,7 @@ graphMEAN	=	function(COEF = FREQ.COEF)	{
 	FREQ_point(COEF = COEF, MEAN = TRUE) + 
 	themeSCALES(COEF) + ylab("Temperature (°C) and Power (W)")
 }
-#	geom_smooth(aes(y = Frequency * FREQ.COEF, group = Period))	 for smooth line
+#	geom_smooth(aes(y = Frequency / FREQ.COEF, group = Period))	 for smooth line
 
 graphMAX	=	function(COEF = FREQ.COEF)	{
 	ggplot(data = dataALL, aes(x=Time)) + 
