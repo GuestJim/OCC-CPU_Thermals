@@ -510,28 +510,3 @@ HIST.Uncore		=	graphHIST(
 	COEF		=	1/1000,
 	binWID		=	0.01
 	)
-
-sinkTXT()
-sinkHTML()
-
-if	(MULTI)	{
-	message("Frequency - Mean")
-	customSave("Frequency - Mean",	plot = graphMEAN())
-}	else	{
-	message("Frequency - Max")
-	customSave("Frequency - Max",	plot = graphMAX())
-}
-message("Frequency")
-customSave("Frequency", 		plot = graphFREQ(),		height	=	2 * length(unique(dataALL$Thread)))
-message("Core Power")
-customSave("Core Power",		plot = graphPOWER(),	height	=	2 * length(unique(dataALL$Core)))
-message("Temperature by Period")
-customSave("Hist - Temperature",	plot = HIST.Temp,		width	=	gHEIGH * 1.25)
-message("Frequency by Period")
-customSave("Hist - Frequency",		plot = HIST.Frequency,	width	=	gHEIGH * 1.25)
-message("Socket Power by Period")
-customSave("Hist - Socket",			plot = HIST.Socket,		width	=	gHEIGH * 1.25)
-# message("Core Power by Period")
-# customSave("Hist - Core",			plot = HIST.Core,		width	=	gHEIGH * 1.25)
-# message("Uncore Power by Period")
-# customSave("Hist - Uncore",			plot = HIST.Uncore,		width	=	gHEIGH * 1.25)
