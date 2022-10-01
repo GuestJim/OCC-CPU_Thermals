@@ -74,7 +74,7 @@ longSUM	=	pivot_longer(dataSUM,
 levels(longSUM$Measurement)	=	unitCOL(levels(longSUM$Measurement))
 longSUM	=	round2(longSUM)
 
-tempCROSS	=	function(IN, PERIOD, QUAN, OP = NULL, LIST = 10)	{
+tempCROSS	=	function(IN, PERIOD, QUAN, OP = NULL)	{
 	COLS	=	c("Time", "CPU_Temp", "CPU_Temp_Diff")
 	out		=	IN[IN$Thread == 0 & IN$Period == PERIOD, COLS]
 	if (PERIOD == "Cooldown")	out$dTime	=	out$Time - duration
@@ -87,10 +87,22 @@ tempCROSS	=	function(IN, PERIOD, QUAN, OP = NULL, LIST = 10)	{
 		if (PERIOD == "Cooldown")	OP	=	"<="
 	}
 	
-	if (OP == "<=")		return(out[out$CPU_Temp <= LIM, ][1:LIST, ])
-	if (OP == ">=")		return(out[out$CPU_Temp >= LIM, ][1:LIST, ])
+	if (OP == "<=")		return(out[out$CPU_Temp <= LIM, ])
+	if (OP == ">=")		return(out[out$CPU_Temp >= LIM, ])
 }
 
+library(R.utils)
+interFORMdiff	<-	function(IN, COOL = FALSE, LIST = 10)	{
+	hold	<-	seqToIntervals(IN$Time)
+	out	<-	data.frame(cbind(
+		"Interval"		=	apply(hold, 1, paste, collapse = " - "),
+		"Cooldown Time"	=	apply(hold - duration, 1, paste, collapse = " - "),
+		"Length"		=	apply(hold, 1, function(IN) paste(diff(IN), "s"))
+	),	check.names = FALSE)
+	if (!COOL)	out$"Cooldown Time"	<-	NULL
+	return(out[1:min(nrow(out), LIST), ])
+}
+#	for making the interval table
 
 #	returns the linear regression slopes for certain variables as a data frame
 CPUslopes	=	function(DATA = dataALL, PERIOD = TESTname,	WID = 0.1, OFF = 0.01)	{
@@ -156,7 +168,8 @@ sinkTXT	=	function()	{
 		
 		writeLines("\nFirst Quartile Temperature Reached")
 		writeLines(paste0(quantile(dataALL[dataALL$Period == TESTname, ]$CPU_Temp, 0.25), " °C\n"))
-		printFrame(tempCROSS(dataALL, TESTname, 0.25, ">="))
+		printFrame(tempCROSS(dataALL, TESTname, 0.25, ">=")[1:10, ])
+		printFrame(interFORMdiff(tempCROSS(dataALL, TESTname, 0.25, ">=")))
 		
 		
 		writeLines("\nCooldown Period")
@@ -164,7 +177,8 @@ sinkTXT	=	function()	{
 
 		writeLines("\nThird Quartile Temperature Reached")
 		writeLines(paste0(quantile(dataALL[dataALL$Period == "Cooldown", ]$CPU_Temp, 0.75), " °C\n"))
-		printFrame(tempCROSS(dataALL, "Cooldown", 0.75, "<="))
+		printFrame(tempCROSS(dataALL, "Cooldown", 0.75, "<=")[1:10, ])
+		printFrame(interFORMdiff(tempCROSS(dataALL, "Cooldown", 0.75, "<="), TRUE))
 	sink()
 }
 
